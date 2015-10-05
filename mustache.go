@@ -9,9 +9,6 @@ import (
 	"strings"
 )
 
-//lambdas?
-//template inheiritance?
-//dot notation!!
 var defaultOtag = "{{"
 var defaultCtag = "}}"
 
