@@ -95,26 +95,26 @@ func TestCompileSection(t *testing.T) {
 func TestRender(t *testing.T) {
 	type expects struct {
 		template string
-		context  Context
+		context  interface{}
 		expected string
 	}
 
 	expected := [...]expects{
-		expects{"hello {{name}}", Context{"name": "steve"}, "hello steve"},
-		expects{"hello {{name}} {{ name}}", Context{"name": "steve"}, "hello steve steve"},
-		expects{"hello {{first_name}} {{last_name}}", Context{"first_name": "steve"}, "hello steve "},
-		expects{"hello {{first_name}} {{last_name}}", Context{"first_name": "steve", "last_name": "m"}, "hello steve m"},
-		expects{"{{name}}", Context{"name": "stove", "last_name": "m"}, "stove"},
-		expects{"{{#name}}yes{{/name}}", Context{"name": "stove", "last_name": "m"}, "yes"},
-		expects{"{{#name}}{{name}}{{/name}}", Context{"name": "stove"}, "stove"},
-		expects{"foo{{^name}}{{name}}{{/name}}", Context{"name": "stove"}, "foo"},
-		expects{"foo{{^bar}}biz{{/bar}}", Context{"name": "stove"}, "foobiz"},
-		expects{"{{#bar}}{{biz}}{{/bar}}", Context{"bar": []Context{{"biz": "bar"}, {"biz": "none"}}}, "barnone"},
-		expects{"{{#bar}}{{foo}}{{/bar}}", Context{"foo": "bar", "bar": []Context{{"biz": "bar"}, {"biz": "none"}}}, "barbar"},
-		expects{"{{name}}{{> test-assets/partial }}", Context{"name": "stove", "foo": "bar"}, "stovebar"},
-		expects{"hello {{name}}", Context{"name": "steve&steve"}, "hello steve&amp;steve"},
-		expects{"hello {{{name}}}", Context{"name": "steve&steve"}, "hello steve&steve"},
-		expects{"hello {{&name}}!", Context{"name": "steve&steve"}, "hello steve&steve!"},
+		expects{"hello {{name}}", map[string]string{"name": "steve"}, "hello steve"},
+		expects{"hello {{name}} {{ name}}", map[string]string{"name": "steve"}, "hello steve steve"},
+		expects{"hello {{first_name}} {{last_name}}", map[string]string{"first_name": "steve"}, "hello steve "},
+		expects{"hello {{first_name}} {{last_name}}", map[string]string{"first_name": "steve", "last_name": "m"}, "hello steve m"},
+		expects{"{{name}}", map[string]string{"name": "stove", "last_name": "m"}, "stove"},
+		expects{"{{#name}}yes{{/name}}", map[string]string{"name": "stove", "last_name": "m"}, "yes"},
+		expects{"{{#name}}{{name}}{{/name}}", map[string]string{"name": "stove"}, "stove"},
+		expects{"foo{{^name}}{{name}}{{/name}}", map[string]string{"name": "stove"}, "foo"},
+		expects{"foo{{^bar}}biz{{/bar}}", map[string]string{"name": "stove"}, "foobiz"},
+		expects{"{{#bar}}{{biz}}{{/bar}}", map[string]interface{}{"bar": []map[string]string{{"biz": "bar"}, {"biz": "none"}}}, "barnone"},
+		expects{"{{#bar}}{{foo}}{{/bar}}", map[string]interface{}{"foo": "bar", "bar": []map[string]string{{"biz": "bar"}, {"biz": "none"}}}, "barbar"},
+		expects{"{{name}}{{> test-assets/partial }}", map[string]string{"name": "stove", "foo": "bar"}, "stovebar"},
+		expects{"hello {{name}}", map[string]string{"name": "steve&steve"}, "hello steve&amp;steve"},
+		expects{"hello {{{name}}}", map[string]string{"name": "steve&steve"}, "hello steve&steve"},
+		expects{"hello {{&name}}!", map[string]string{"name": "steve&steve"}, "hello steve&steve!"},
 	}
 
 	for _, e := range expected {

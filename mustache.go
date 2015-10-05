@@ -35,21 +35,23 @@ func (t *token) isEmpty() bool {
 }
 
 // Render recursively walks the tokens and writes it's output to a buffer.
-func (t *token) render(cstack []Context, output *bytes.Buffer) {
+func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 	if t.within {
 		if t.cmd == "#" {
 			//what values are "falsey" here
 			if val, ok := contextStackContains(cstack, t.args); ok {
 				kind := reflect.TypeOf(val).Kind()
 				if kind == reflect.Array || kind == reflect.Slice {
-					for _, v := range val.([]Context) {
+					a := reflect.ValueOf(val)
+
+					for i := 0; i < a.Len(); i++ {
 						for _, child := range t.children {
-							child.render(append(cstack, v), output)
+							child.render(append(cstack, a.Index(i).Interface()), output)
 						}
 					}
 				} else if kind == reflect.Map {
 					for _, child := range t.children {
-						child.render(append(cstack, val.(Context)), output)
+						child.render(append(cstack, val), output)
 					}
 				} else {
 					for _, child := range t.children {
@@ -228,19 +230,22 @@ func newToken(cmd string, b *bytes.Buffer, within, notEscaped bool) (token, erro
 
 // ContextStackContains recursively walks the context stack to see if the given key is available.
 // It will return the value and an ok.
-func contextStackContains(cstack []Context, key string) (interface{}, bool) {
+func contextStackContains(cstack []interface{}, key string) (interface{}, bool) {
 	for i := len(cstack) - 1; i >= 0; i-- {
 		c := cstack[i]
-		if val, ok := c[key]; ok {
-			return val, ok
+
+		k := reflect.TypeOf(c).Kind()
+		if k == reflect.Map {
+			m := reflect.ValueOf(c)
+			if val := m.MapIndex(reflect.ValueOf(key)); val.IsValid() {
+				return val.Interface(), true
+			}
+
 		}
 	}
 
-	return "", false
+	return nil, false
 }
-
-// Context type represents the data to be used in a template
-type Context map[string]interface{}
 
 // Template is a compiled template
 type Template struct {
@@ -256,18 +261,18 @@ func Compile(template string) (*Template, error) {
 }
 
 // Render will render a template using the provided data.
-func (t *Template) Render(c Context) string {
+func (t *Template) Render(c ...interface{}) string {
 	var b bytes.Buffer
-	t.token.render([]Context{c}, &b)
+	t.token.render(c, &b)
 
 	return b.String()
 }
 
 // Render will render a template using the provided data.
-func Render(template string, c Context) (string, error) {
+func Render(template string, c ...interface{}) (string, error) {
 	t, err := Compile(template)
 
-	s := t.Render(c)
+	s := t.Render(c...)
 
 	if err != nil {
 		return s, err
