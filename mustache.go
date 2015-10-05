@@ -246,14 +246,16 @@ func contextStackContains(cstack []interface{}, key string) (interface{}, bool) 
 	if strings.Contains(key, ".") {
 		s := strings.Split(key, ".")
 		searchstack := cstack
+		var r interface{}
 		for _, prefix := range s {
-			r, ok := contextStackContains(searchstack, prefix)
+			var ok bool
+			r, ok = contextStackContains(searchstack, prefix)
 			searchstack = []interface{}{r}
 			if !ok {
 				return nil, false
 			}
 		}
-		return cstack, true
+		return r, true
 	}
 
 	return nil, false
