@@ -35,8 +35,7 @@ func (t *token) isEmpty() bool {
 func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 	if t.within {
 		if t.cmd == "#" {
-			//what values are "falsey" here
-			if val, ok := contextStackContains(cstack, t.args); ok {
+			if val, ok := contextStackContains(cstack, t.args); ok && !isFalsey(val) {
 				kind := reflect.TypeOf(val).Kind()
 				if kind == reflect.Array || kind == reflect.Slice {
 					a := reflect.ValueOf(val)
@@ -57,7 +56,7 @@ func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 				}
 			}
 		} else if t.cmd == "^" {
-			if _, ok := contextStackContains(cstack, t.args); !ok {
+			if val, ok := contextStackContains(cstack, t.args); !ok || isFalsey(val) {
 				for _, t := range t.children {
 					t.render(cstack, output)
 				}
@@ -227,6 +226,19 @@ func newToken(cmd string, b *bytes.Buffer, within, notEscaped bool) (token, erro
 	b.Reset()
 
 	return t, err
+}
+
+func isFalsey(val interface{}) bool {
+	v := reflect.ValueOf(val)
+	switch reflect.TypeOf(val).Kind() {
+	case reflect.Array, reflect.Slice, reflect.Map:
+		return v.Len() == 0
+	case reflect.Bool:
+		return !v.Bool()
+	default:
+		return fmt.Sprint(val) != ""
+	}
+
 }
 
 // ContextStackContains recursively walks the context stack to see if the given key is available.
