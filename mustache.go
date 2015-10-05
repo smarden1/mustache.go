@@ -235,12 +235,15 @@ func contextStackContains(cstack []interface{}, key string) (interface{}, bool) 
 		c := cstack[i]
 
 		k := reflect.TypeOf(c).Kind()
+		v := reflect.ValueOf(c)
 		if k == reflect.Map {
-			m := reflect.ValueOf(c)
-			if val := m.MapIndex(reflect.ValueOf(key)); val.IsValid() {
+			if val := v.MapIndex(reflect.ValueOf(key)); val.IsValid() {
 				return val.Interface(), true
 			}
-
+		} else if k == reflect.Struct {
+			if val := v.FieldByName(key); val.IsValid() {
+				return val.Interface(), true
+			}
 		}
 	}
 

@@ -99,6 +99,11 @@ func TestRender(t *testing.T) {
 		expected string
 	}
 
+	type foo struct {
+		Foo string
+		Bar int
+	}
+
 	expected := [...]expects{
 		expects{"hello {{name}}", map[string]string{"name": "steve"}, "hello steve"},
 		expects{"hello {{name}} {{ name}}", map[string]string{"name": "steve"}, "hello steve steve"},
@@ -116,7 +121,8 @@ func TestRender(t *testing.T) {
 		expects{"hello {{{name}}}", map[string]string{"name": "steve&steve"}, "hello steve&steve"},
 		expects{"hello {{&name}}!", map[string]string{"name": "steve&steve"}, "hello steve&steve!"},
 		expects{"{{num}} / {{dem}}", map[string]int{"num": 1, "dem": 10}, "1 / 10"},
-		expects{"{{num}} / {{dem}}", map[string]float32{"num": 1.0, "dem": 10.5}, "1 / 10.5"},
+		expects{"{{Foo}}", foo{"bar", 10}, "bar"},
+		expects{"{{foo}}", foo{"bar", 10}, ""},
 	}
 
 	for _, e := range expected {
