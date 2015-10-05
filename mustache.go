@@ -142,6 +142,10 @@ func compile(template string) (token, error) {
 						sections = append(sections, &currentToken)
 					}
 				}
+				// standalone command on line, so dont count the break
+				if matchesTag(template, i+1, "\n") || matchesTag(template, i+1, "\r") {
+					i++
+				}
 			}
 		} else {
 			if matchesTag(template, i, "{{{") {
