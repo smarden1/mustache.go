@@ -67,7 +67,7 @@ func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 			}
 		} else if t.cmd == "" {
 			if val, ok := contextStackContains(cstack, t.args); ok {
-				s := val.(string)
+				s := fmt.Sprint(val)
 				if !t.notEscaped {
 					s = html.EscapeString(s)
 				}

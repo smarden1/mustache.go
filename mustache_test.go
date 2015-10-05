@@ -115,6 +115,8 @@ func TestRender(t *testing.T) {
 		expects{"hello {{name}}", map[string]string{"name": "steve&steve"}, "hello steve&amp;steve"},
 		expects{"hello {{{name}}}", map[string]string{"name": "steve&steve"}, "hello steve&steve"},
 		expects{"hello {{&name}}!", map[string]string{"name": "steve&steve"}, "hello steve&steve!"},
+		expects{"{{num}} / {{dem}}", map[string]int{"num": 1, "dem": 10}, "1 / 10"},
+		expects{"{{num}} / {{dem}}", map[string]float32{"num": 1.0, "dem": 10.5}, "1 / 10.5"},
 	}
 
 	for _, e := range expected {
