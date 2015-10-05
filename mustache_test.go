@@ -132,6 +132,33 @@ func TestRender(t *testing.T) {
 	}
 }
 
+func TestContextStackContains(t *testing.T) {
+	m := map[string]map[string]string{
+		"a":   {"b": "ab"},
+		"foo": {"bar": "biz"},
+	}
+
+	type expects struct {
+		key   string
+		valid bool
+	}
+
+	expected := [...]expects{
+		expects{"a", true},
+		expects{"c", false},
+		expects{"a.d", false},
+		expects{"a.b", true},
+	}
+
+	for _, e := range expected {
+		_, ok := contextStackContains([]interface{}{m}, e.key)
+		if ok != e.valid {
+			t.Errorf("Incorrect contextStackContains, got %t, expected %t for key %v", ok, e.valid, e.key)
+		}
+	}
+
+}
+
 func TestMatchesTag(t *testing.T) {
 	template := "abcde {{ efg }} fg }}} < }>"
 
