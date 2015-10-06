@@ -62,12 +62,12 @@ func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 				}
 			}
 		} else if t.cmd == "" {
-			if t.args == "." {
-				val := cstack[len(cstack)-1]
-				t.renderString(val, output)
-			}
 			if val, ok := contextStackContains(cstack, t.args); ok {
-				t.renderString(val, output)
+				s := fmt.Sprint(val)
+				if !t.notEscaped {
+					s = html.EscapeString(s)
+				}
+				output.WriteString(s)
 			}
 			for _, child := range t.children {
 				child.render(cstack, output)
@@ -76,15 +76,6 @@ func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 	} else {
 		output.WriteString(t.args)
 	}
-}
-
-// renderString writes a string to an output buffer and escapes it if necessary.
-func (t *token) renderString(val interface{}, output *bytes.Buffer) {
-	s := fmt.Sprint(val)
-	if !t.notEscaped {
-		s = html.EscapeString(s)
-	}
-	output.WriteString(s)
 }
 
 // Compile will take compile a template into a token.
@@ -281,6 +272,10 @@ func isFalsey(val interface{}) bool {
 func contextStackContains(cstack []interface{}, key string) (interface{}, bool) {
 	for i := len(cstack) - 1; i >= 0; i-- {
 		c := cstack[i]
+
+		if key == "." {
+			return c, true
+		}
 
 		k := reflect.TypeOf(c).Kind()
 		v := reflect.ValueOf(c)
