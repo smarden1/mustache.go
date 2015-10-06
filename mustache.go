@@ -62,12 +62,12 @@ func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 				}
 			}
 		} else if t.cmd == "" {
+			if t.args == "." {
+				val := cstack[len(cstack)-1]
+				t.renderString(val, output)
+			}
 			if val, ok := contextStackContains(cstack, t.args); ok {
-				s := fmt.Sprint(val)
-				if !t.notEscaped {
-					s = html.EscapeString(s)
-				}
-				output.WriteString(s)
+				t.renderString(val, output)
 			}
 			for _, child := range t.children {
 				child.render(cstack, output)
@@ -76,6 +76,15 @@ func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 	} else {
 		output.WriteString(t.args)
 	}
+}
+
+// renderString writes a string to an output buffer and escapes it if necessary.
+func (t *token) renderString(val interface{}, output *bytes.Buffer) {
+	s := fmt.Sprint(val)
+	if !t.notEscaped {
+		s = html.EscapeString(s)
+	}
+	output.WriteString(s)
 }
 
 // Compile will take compile a template into a token.
@@ -155,6 +164,8 @@ func compile(template string) (token, error) {
 				withinTag = true
 				i += len(otag) - 1
 			} else {
+				// lines are valid if they contain actual values on them,
+				// just a section should not make a newline to the final output
 				if isNewLine(s) {
 					if !isValidLine {
 						for _, tkn := range lineTokenPointers {
