@@ -156,7 +156,35 @@ func TestContextStackContains(t *testing.T) {
 			t.Errorf("Incorrect contextStackContains, got %t, expected %t for key %v", ok, e.valid, e.key)
 		}
 	}
+}
 
+func TestIsFalsey(t *testing.T) {
+	a := [...]interface{}{
+		false,
+		"",
+		[]string{},
+	}
+
+	for _, e := range a {
+		if !isFalsey(e) {
+			t.Errorf("Falsey value %s was truthy", e)
+		}
+	}
+}
+
+func TestIsNotFalsey(t *testing.T) {
+	a := [...]interface{}{
+		true,
+		"true",
+		"anything",
+		[]string{"a"},
+	}
+
+	for _, e := range a {
+		if isFalsey(e) {
+			t.Errorf("Truthy value %s was falsey", e)
+		}
+	}
 }
 
 func TestMatchesTag(t *testing.T) {

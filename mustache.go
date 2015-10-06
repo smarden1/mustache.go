@@ -236,7 +236,7 @@ func isFalsey(val interface{}) bool {
 	case reflect.Bool:
 		return !v.Bool()
 	default:
-		return fmt.Sprint(val) != ""
+		return fmt.Sprint(val) == ""
 	}
 
 }
