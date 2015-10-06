@@ -89,6 +89,7 @@ func compile(template string) (token, error) {
 	rootToken.within = true
 	sections := []*token{&rootToken}
 	var buffer bytes.Buffer
+	isValidLine := false
 	cmd := ""
 
 	for i := 0; i < len(template); i++ {
@@ -134,6 +135,7 @@ func compile(template string) (token, error) {
 					ctag = strings.Replace(sets[len(sets)-1], " ", "", -1)
 					ctag = strings.Replace(ctag, "=", "", -1) // this has a bug if it has ='s in the ctag
 				} else if currentToken.cmd != "!" {
+					isValidLine = true // this is an interpolated value, therefore it is not standalone
 					lastToken := sections[len(sections)-1]
 					lastToken.children = append(lastToken.children, &currentToken)
 
@@ -142,8 +144,11 @@ func compile(template string) (token, error) {
 					}
 				}
 				// standalone command on line, so dont count the break
-				if matchesTag(template, i+1, "\n") || matchesTag(template, i+1, "\r") {
+				if !isValidLine && matchesTag(template, i+1, "\n") || matchesTag(template, i+1, "\r") {
 					i++
+					if matchesTag(template, i+1, "\n") {
+						i++
+					}
 				}
 			}
 		} else {
@@ -154,10 +159,15 @@ func compile(template string) (token, error) {
 				withinTag = true
 				i += len(otag) - 1
 			} else {
+				isValidLine = !isNewLine(s) || isValidLine || !isWhiteSpace(s)
 				buffer.WriteString(s)
 			}
 			// we just opened it so set state
 			if withinTag {
+				if !isValidLine {
+					buffer.Reset()
+				}
+
 				var currentToken token
 				currentToken, err = newToken(cmd, &buffer, false, false)
 
@@ -195,7 +205,12 @@ var commands = map[string]bool{
 
 // IsWhiteSpace returns a boolean indicating if this character is a whitespace
 func isWhiteSpace(chr string) bool {
-	return chr == " " || chr == "\n" || chr == "\r"
+	return chr == " " || chr == "\t" || isNewLine(chr)
+}
+
+// IsNewLine returns a boolean indicating if this character is a newline character
+func isNewLine(chr string) bool {
+	return chr == "\n" || chr == "\r"
 }
 
 // MatchesTag looks ahead to see if the given tag is found in the template.
