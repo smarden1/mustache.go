@@ -163,6 +163,7 @@ func TestIsFalsey(t *testing.T) {
 		false,
 		"",
 		[]string{},
+		map[string]int{},
 	}
 
 	for _, e := range a {
@@ -178,6 +179,7 @@ func TestIsNotFalsey(t *testing.T) {
 		"true",
 		"anything",
 		[]string{"a"},
+		map[string]int{"a": 2},
 	}
 
 	for _, e := range a {
