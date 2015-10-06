@@ -92,6 +92,7 @@ func compile(template string) (token, error) {
 	isValidLine := false
 	lineTokenPointers := []*token{}
 	cmd := ""
+	cmdsOnLine := 0
 
 	for i := 0; i < len(template); i++ {
 		s := string(template[i])
@@ -157,19 +158,25 @@ func compile(template string) (token, error) {
 			} else {
 				// lines are valid if they contain actual values on them,
 				// just a section should not make a newline to the final output
+				// hwowever, a line with just whitespace or a single newline is valid
 				if isNewLine(s) {
-					if !isValidLine {
+					if !isValidLine && cmdsOnLine > 0 {
 						for _, tkn := range lineTokenPointers {
 							t := *tkn
 							if t.cmd == "" {
 								t.args = ""
 							}
 						}
+						// handle windows carriage returns
+						if matchesTag(template, i, "\r\n") {
+							i++
+						}
 					} else {
 						buffer.WriteString(s)
 					}
 					lineTokenPointers = []*token{}
 					isValidLine = false
+					cmdsOnLine = 0
 				} else {
 					isValidLine = isValidLine || !isWhiteSpace(s)
 					buffer.WriteString(s)
@@ -178,6 +185,7 @@ func compile(template string) (token, error) {
 			}
 			// we just opened it so set state
 			if withinTag {
+				cmdsOnLine++
 				var currentToken token
 				currentToken, err = newToken(cmd, &buffer, false, false)
 				lineTokenPointers = append(lineTokenPointers, &currentToken)
