@@ -90,6 +90,7 @@ func compile(template string) (token, error) {
 	sections := []*token{&rootToken}
 	var buffer bytes.Buffer
 	isValidLine := false
+	lineTokenPointers := []*token{}
 	cmd := ""
 
 	for i := 0; i < len(template); i++ {
@@ -111,6 +112,7 @@ func compile(template string) (token, error) {
 			if !withinTag {
 				var currentToken token
 				currentToken, err = newToken(cmd, &buffer, true, notEscaped)
+				lineTokenPointers = append(lineTokenPointers, &currentToken)
 				notEscaped = false
 				cmd = ""
 
@@ -135,19 +137,13 @@ func compile(template string) (token, error) {
 					ctag = strings.Replace(sets[len(sets)-1], " ", "", -1)
 					ctag = strings.Replace(ctag, "=", "", -1) // this has a bug if it has ='s in the ctag
 				} else if currentToken.cmd != "!" {
-					isValidLine = true // this is an interpolated value, therefore it is not standalone
 					lastToken := sections[len(sections)-1]
 					lastToken.children = append(lastToken.children, &currentToken)
 
 					if currentToken.cmd == "#" || currentToken.cmd == "^" {
 						sections = append(sections, &currentToken)
-					}
-				}
-				// standalone command on line, so dont count the break
-				if !isValidLine && matchesTag(template, i+1, "\n") || matchesTag(template, i+1, "\r") {
-					i++
-					if matchesTag(template, i+1, "\n") {
-						i++
+					} else {
+						isValidLine = true // this is an interpolated value, therefore it is not standalone
 					}
 				}
 			}
@@ -159,17 +155,30 @@ func compile(template string) (token, error) {
 				withinTag = true
 				i += len(otag) - 1
 			} else {
-				isValidLine = !isNewLine(s) || isValidLine || !isWhiteSpace(s)
-				buffer.WriteString(s)
+				if isNewLine(s) {
+					if !isValidLine {
+						for _, tkn := range lineTokenPointers {
+							t := *tkn
+							if t.cmd == "" {
+								t.args = ""
+							}
+						}
+					} else {
+						buffer.WriteString(s)
+					}
+					lineTokenPointers = []*token{}
+					isValidLine = false
+				} else {
+					isValidLine = isValidLine || !isWhiteSpace(s)
+					buffer.WriteString(s)
+				}
+
 			}
 			// we just opened it so set state
 			if withinTag {
-				if !isValidLine {
-					buffer.Reset()
-				}
-
 				var currentToken token
 				currentToken, err = newToken(cmd, &buffer, false, false)
+				lineTokenPointers = append(lineTokenPointers, &currentToken)
 
 				if !currentToken.isEmpty() {
 					lastToken := sections[len(sections)-1]
