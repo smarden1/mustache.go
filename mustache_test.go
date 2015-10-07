@@ -62,6 +62,21 @@ func TestCompileComments(t *testing.T) {
 	}
 }
 
+func TestCompilePartial(t *testing.T) {
+	p, _ := compile("{{name}}{{> test-assets/partial }}")
+	expected := []string{"name", ""}
+
+	for i, e := range expected {
+		if p.children[i].args != e {
+			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p.children[i].args)
+		}
+	}
+
+	if r := p.children[1].children[0].args; r != "foo" {
+		t.Errorf("Invalid arguments while parsing, expected foo but got %s", r)
+	}
+}
+
 func TestCompileSection(t *testing.T) {
 	p, _ := compile("hello, {{#name}}again, {{first_name}} {{last_name}}{{/name}}")
 	expected := []string{"hello, ", "name"}
