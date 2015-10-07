@@ -62,17 +62,6 @@ func TestCompileComments(t *testing.T) {
 	}
 }
 
-/*func TestCompilePartial(t *testing.T) {
-	p, _ := compile("{{name}}{{> test-assets/partial }}")
-	expected := []string{"name", "foo"}
-
-	for i, e := range expected {
-		if p.children[i].args != e {
-			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p.children[i].args)
-		}
-	}
-}*/
-
 func TestCompileSection(t *testing.T) {
 	p, _ := compile("hello, {{#name}}again, {{first_name}} {{last_name}}{{/name}}")
 	expected := []string{"hello, ", "name"}
@@ -185,6 +174,44 @@ func TestIsNotFalsey(t *testing.T) {
 	for _, e := range a {
 		if isFalsey(e) {
 			t.Errorf("Truthy value %s was falsey", e)
+		}
+	}
+}
+
+func TestShouldKeepWhiteSpace(t *testing.T) {
+	type expect struct {
+		pointers []*token
+		expected bool
+		desc     string
+	}
+
+	space := token{cmd: "", args: " "}
+	newLine := token{cmd: "", args: "\n"}
+	carriageNewLine := token{cmd: "", args: "\r\n"}
+	word := token{cmd: "", args: "foo"}
+	interpolation := token{cmd: "", args: "bar", within: true}
+	section := token{cmd: "#", args: "bar", within: true}
+	inverted := token{cmd: "^", args: "foo", within: true}
+	comment := token{cmd: "!", args: "foo", within: true}
+
+	a := [...]expect{
+		expect{[]*token{&space, &space, &section}, false, "space, space, section"},
+		expect{[]*token{&space, &space, &interpolation}, true, "space, space, interpolation"},
+		expect{[]*token{&newLine, &space, &interpolation}, true, "newline, space, interpolation"},
+		expect{[]*token{&carriageNewLine, &space, &word}, true, "carriageNewLine, space, word"},
+		expect{[]*token{&space}, true, "space"},
+		expect{[]*token{&space, &inverted}, false, "space, inverted"},
+		expect{[]*token{&inverted, &word}, true, "inverted, word"},
+		expect{[]*token{&inverted}, false, "inverted"},
+		expect{[]*token{&word}, true, "word"},
+		expect{[]*token{&comment}, false, "comment"},
+		expect{[]*token{&section, &newLine}, false, "section"},
+		expect{[]*token{&space, &section, &newLine}, false, "space, section, newLine"},
+	}
+
+	for _, e := range a {
+		if shouldKeepWhiteSpace(e.pointers) != e.expected {
+			t.Errorf("Unexpected value for %s", e.desc)
 		}
 	}
 }

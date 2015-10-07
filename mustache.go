@@ -89,10 +89,8 @@ func compile(template string) (token, error) {
 	rootToken.within = true
 	sections := []*token{&rootToken}
 	var buffer bytes.Buffer
-	isValidLine := false
 	lineTokenPointers := []*token{}
 	cmd := ""
-	cmdsOnLine := 0
 
 	for i := 0; i < len(template); i++ {
 		s := string(template[i])
@@ -143,8 +141,6 @@ func compile(template string) (token, error) {
 
 					if currentToken.cmd == "#" || currentToken.cmd == "^" {
 						sections = append(sections, &currentToken)
-					} else {
-						isValidLine = true // this is an interpolated value, therefore it is not standalone
 					}
 				}
 			}
@@ -160,10 +156,10 @@ func compile(template string) (token, error) {
 				// just a section should not make a newline to the final output
 				// hwowever, a line with just whitespace or a single newline is valid
 				if isNewLine(s) {
-					if !isValidLine && cmdsOnLine > 0 {
+					if !shouldKeepWhiteSpace(lineTokenPointers) {
 						for _, tkn := range lineTokenPointers {
 							t := *tkn
-							if t.cmd == "" {
+							if t.cmd == "" && !t.within {
 								t.args = ""
 							}
 						}
@@ -175,17 +171,12 @@ func compile(template string) (token, error) {
 						buffer.WriteString(s)
 					}
 					lineTokenPointers = []*token{}
-					isValidLine = false
-					cmdsOnLine = 0
 				} else {
-					isValidLine = isValidLine || !isWhiteSpace(s)
 					buffer.WriteString(s)
 				}
-
 			}
 			// we just opened it so set state
 			if withinTag {
-				cmdsOnLine++
 				var currentToken token
 				currentToken, err = newToken(cmd, &buffer, false, false)
 				lineTokenPointers = append(lineTokenPointers, &currentToken)
@@ -220,6 +211,22 @@ var commands = map[string]bool{
 	"=": true,
 	"!": true,
 	"&": true,
+}
+
+func shouldKeepWhiteSpace(lineTokenPointers []*token) bool {
+	commandCount := 0
+	for _, tkn := range lineTokenPointers {
+		t := *tkn
+		if t.cmd == "" && !t.within && !isWhiteSpace(t.args) {
+			return true
+		} else if t.cmd == "" && t.within {
+			return true
+		} else if t.within {
+			commandCount++
+		}
+	}
+
+	return commandCount == 0
 }
 
 // IsWhiteSpace returns a boolean indicating if this character is a whitespace
