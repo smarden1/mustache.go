@@ -118,6 +118,8 @@ func compile(template string) (token, error) {
 				if currentToken.cmd == "/" {
 					if len(sections) > 0 && sections[len(sections)-1].args == currentToken.args {
 						sections = sections[:len(sections)-1]
+						lastToken := sections[len(sections)-1]
+						lastToken.children = append(lastToken.children, &currentToken)
 					} else {
 						err = fmt.Errorf("Malformed template: %s was closed but not opened", currentToken.args)
 					}
@@ -156,7 +158,8 @@ func compile(template string) (token, error) {
 				// just a section should not make a newline to the final output
 				// hwowever, a line with just whitespace or a single newline is valid
 				if isNewLine(s) {
-					if !shouldKeepWhiteSpace(lineTokenPointers) {
+					if !shouldKeepWhiteSpace(lineTokenPointers, &buffer) {
+						// clear out whitespace
 						for _, tkn := range lineTokenPointers {
 							t := *tkn
 							if t.cmd == "" && !t.within {
@@ -171,6 +174,9 @@ func compile(template string) (token, error) {
 						buffer.WriteString(s)
 					}
 					lineTokenPointers = []*token{}
+					currentToken, _ := newToken("", &buffer, false, true)
+					lastToken := sections[len(sections)-1]
+					lastToken.children = append(lastToken.children, &currentToken)
 				} else {
 					buffer.WriteString(s)
 				}
@@ -213,13 +219,22 @@ var commands = map[string]bool{
 	"&": true,
 }
 
-func shouldKeepWhiteSpace(lineTokenPointers []*token) bool {
+// ShouldKeepWhiteSpace returns a boolean which indicates whether or not the
+// whitespace on a line should be kept or not.
+// Whitespace should be removed if the line is only there for making a template legible as a template
+// but is not desired for the final output.
+// i.e. - in lines that only contain {{/foo}}, then the line should not introduce additional whitespace
+func shouldKeepWhiteSpace(lineTokenPointers []*token, buffer *bytes.Buffer) bool {
+	for _, chr := range buffer.String() {
+		if !isWhiteSpace(string(chr)) {
+			return true
+		}
+	}
+
 	commandCount := 0
 	for _, tkn := range lineTokenPointers {
 		t := *tkn
-		if t.cmd == "" && !t.within && !isWhiteSpace(t.args) {
-			return true
-		} else if t.cmd == "" && t.within {
+		if t.cmd == "" && !isWhiteSpace(t.args) {
 			return true
 		} else if t.within {
 			commandCount++

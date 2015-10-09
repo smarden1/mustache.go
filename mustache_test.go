@@ -1,6 +1,9 @@
 package mustache
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 func TestCompile(t *testing.T) {
 	p, _ := compile("hello {{name}} ")
@@ -208,6 +211,7 @@ func TestShouldKeepWhiteSpace(t *testing.T) {
 	section := token{cmd: "#", args: "bar", within: true}
 	inverted := token{cmd: "^", args: "foo", within: true}
 	comment := token{cmd: "!", args: "foo", within: true}
+	closed := token{cmd: "/", args: "bool", within: true}
 
 	a := [...]expect{
 		expect{[]*token{&space, &space, &section}, false, "space, space, section"},
@@ -222,10 +226,13 @@ func TestShouldKeepWhiteSpace(t *testing.T) {
 		expect{[]*token{&comment}, false, "comment"},
 		expect{[]*token{&section, &newLine}, false, "section"},
 		expect{[]*token{&space, &section, &newLine}, false, "space, section, newLine"},
+		expect{[]*token{&closed}, false, "closed"},
+		expect{[]*token{&closed, &newLine}, false, "closed, newLine"},
 	}
 
+	var b bytes.Buffer
 	for _, e := range a {
-		if shouldKeepWhiteSpace(e.pointers) != e.expected {
+		if shouldKeepWhiteSpace(e.pointers, &b) != e.expected {
 			t.Errorf("Unexpected value for %s", e.desc)
 		}
 	}
