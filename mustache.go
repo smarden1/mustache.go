@@ -161,9 +161,8 @@ func compile(template string) (token, error) {
 					if !shouldKeepWhiteSpace(lineTokenPointers, &buffer) {
 						// clear out whitespace
 						for _, tkn := range lineTokenPointers {
-							t := *tkn
-							if t.cmd == "" && !t.within {
-								t.args = ""
+							if tkn.cmd == "" && !tkn.within {
+								tkn.args = ""
 							}
 						}
 						// handle windows carriage returns
@@ -242,17 +241,14 @@ func shouldKeepWhiteSpace(lineTokenPointers []*token, buffer *bytes.Buffer) bool
 		return true
 	}
 
-	commandCount := 0
 	for _, tkn := range lineTokenPointers {
 		t := *tkn
 		if t.cmd == "" && !isStringCompletelyWhiteSpace(t.args) {
 			return true
-		} else if t.within {
-			commandCount++
 		}
 	}
 
-	return commandCount == 0
+	return false
 }
 
 func isStringCompletelyWhiteSpace(s string) bool {

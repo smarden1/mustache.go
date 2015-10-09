@@ -218,7 +218,6 @@ func TestShouldKeepWhiteSpace(t *testing.T) {
 		expect{[]*token{&space, &space, &interpolation}, true, "space, space, interpolation"},
 		expect{[]*token{&newLine, &space, &interpolation}, true, "newline, space, interpolation"},
 		expect{[]*token{&carriageNewLine, &space, &word}, true, "carriageNewLine, space, word"},
-		expect{[]*token{&space}, true, "space"},
 		expect{[]*token{&space, &inverted}, false, "space, inverted"},
 		expect{[]*token{&inverted, &word}, true, "inverted, word"},
 		expect{[]*token{&inverted}, false, "inverted"},
