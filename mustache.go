@@ -195,12 +195,11 @@ func compile(template string) (token, error) {
 		}
 	}
 
-	if !shouldKeepWhiteSpace([]*token{}, &buffer) {
+	if !shouldKeepWhiteSpace(lineTokenPointers, &buffer) {
 		// clear out whitespace
 		for _, tkn := range lineTokenPointers {
-			t := *tkn
-			if t.cmd == "" && !t.within {
-				t.args = ""
+			if tkn.cmd == "" && !tkn.within {
+				tkn.args = ""
 			}
 		}
 
