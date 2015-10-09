@@ -137,7 +137,7 @@ func compile(template string) (token, error) {
 					otag = strings.Replace(sets[0], " ", "", -1)
 					ctag = strings.Replace(sets[len(sets)-1], " ", "", -1)
 					ctag = strings.Replace(ctag, "=", "", -1) // this has a bug if it has ='s in the ctag
-				} else if currentToken.cmd != "!" {
+				} else {
 					lastToken := sections[len(sections)-1]
 					lastToken.children = append(lastToken.children, &currentToken)
 
@@ -170,6 +170,7 @@ func compile(template string) (token, error) {
 						if matchesTag(template, i, "\r\n") {
 							i++
 						}
+						buffer.Reset()
 					} else {
 						buffer.WriteString(s)
 					}
@@ -193,6 +194,18 @@ func compile(template string) (token, error) {
 				}
 			}
 		}
+	}
+
+	if !shouldKeepWhiteSpace([]*token{}, &buffer) {
+		// clear out whitespace
+		for _, tkn := range lineTokenPointers {
+			t := *tkn
+			if t.cmd == "" && !t.within {
+				t.args = ""
+			}
+		}
+
+		buffer.Reset()
 	}
 	var currentToken token
 	currentToken, err = newToken(cmd, &buffer, false, false)
@@ -225,16 +238,14 @@ var commands = map[string]bool{
 // but is not desired for the final output.
 // i.e. - in lines that only contain {{/foo}}, then the line should not introduce additional whitespace
 func shouldKeepWhiteSpace(lineTokenPointers []*token, buffer *bytes.Buffer) bool {
-	for _, chr := range buffer.String() {
-		if !isWhiteSpace(string(chr)) {
-			return true
-		}
+	if !isStringCompletelyWhiteSpace(buffer.String()) {
+		return true
 	}
 
 	commandCount := 0
 	for _, tkn := range lineTokenPointers {
 		t := *tkn
-		if t.cmd == "" && !isWhiteSpace(t.args) {
+		if t.cmd == "" && !isStringCompletelyWhiteSpace(t.args) {
 			return true
 		} else if t.within {
 			commandCount++
@@ -242,6 +253,15 @@ func shouldKeepWhiteSpace(lineTokenPointers []*token, buffer *bytes.Buffer) bool
 	}
 
 	return commandCount == 0
+}
+
+func isStringCompletelyWhiteSpace(s string) bool {
+	for _, chr := range s {
+		if !isWhiteSpace(string(chr)) {
+			return false
+		}
+	}
+	return true
 }
 
 // IsWhiteSpace returns a boolean indicating if this character is a whitespace

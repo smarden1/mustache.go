@@ -56,7 +56,7 @@ func TestCompileSetTag(t *testing.T) {
 
 func TestCompileComments(t *testing.T) {
 	p, _ := compile("{{  name  }}{{! blah}}{{gnome   }}{{ !# blah}}")
-	expected := []string{"name", "gnome"}
+	expected := []string{"name", "blah", "gnome", "#blah"}
 
 	for i, e := range expected {
 		if p.children[i].args != e {
@@ -227,6 +227,7 @@ func TestShouldKeepWhiteSpace(t *testing.T) {
 		expect{[]*token{&section, &newLine}, false, "section"},
 		expect{[]*token{&space, &section, &newLine}, false, "space, section, newLine"},
 		expect{[]*token{&closed}, false, "closed"},
+		expect{[]*token{&space, &closed}, false, "closed"},
 		expect{[]*token{&closed, &newLine}, false, "closed, newLine"},
 	}
 
