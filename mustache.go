@@ -237,7 +237,7 @@ var commands = map[string]bool{
 // but is not desired for the final output.
 // i.e. - in lines that only contain {{/foo}}, then the line should not introduce additional whitespace
 func shouldKeepWhiteSpace(lineTokenPointers []*token, buffer *bytes.Buffer) bool {
-	if !isStringCompletelyWhiteSpace(buffer.String()) {
+	if !isStringCompletelyWhiteSpace(buffer.String()) || len(lineTokenPointers) == 0 {
 		return true
 	}
 
