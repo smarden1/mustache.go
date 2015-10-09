@@ -246,7 +246,7 @@ func shouldKeepWhiteSpace(lineTokenPointers []*token, buffer *bytes.Buffer) bool
 
 // IsWhiteSpace returns a boolean indicating if this character is a whitespace
 func isWhiteSpace(chr string) bool {
-	return chr == "" || chr == " " || chr == "\t" || isNewLine(chr)
+	return chr == "" || chr == " " || chr == "\t" || isNewLine(chr) || rune(chr[0]) < 32
 }
 
 // IsNewLine returns a boolean indicating if this character is a newline character
