@@ -6,92 +6,88 @@ import (
 )
 
 func TestCompile(t *testing.T) {
-	p, _ := compile("hello {{name}} ")
+	template, _ := Compile("hello {{name}} ")
 	expected := []string{"hello ", "name"}
 
 	for i, e := range expected {
-		if p.children[i].args != e {
-			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p.children[i].args)
+		if template.token.children[i].args != e {
+			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, template.token.children[i].args)
 		}
 	}
 
-	p, _ = compile("hello {{name}}")
+	template, _ = Compile("hello {{name}}")
 	expected = []string{"hello ", "name"}
 
 	for i, e := range expected {
-		if p.children[i].args != e {
-			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p.children[i].args)
+		if template.token.children[i].args != e {
+			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, template.token.children[i].args)
 		}
 	}
 
-	p, _ = compile("hello {{name}}, goodbye {{name}}")
+	template, _ = Compile("hello {{name}}, goodbye {{name}}")
 	expected = []string{"hello ", "name", ", goodbye ", "name"}
 
 	for i, e := range expected {
-		if p.children[i].args != e {
-			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p.children[i].args)
+		if template.token.children[i].args != e {
+			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, template.token.children[i].args)
 		}
 	}
 
-	p, _ = compile(" hello {{  name  }}")
+	template, _ = Compile(" hello {{  name  }}")
 	expected = []string{" hello ", "name"}
 
 	for i, e := range expected {
-		if p.children[i].args != e {
-			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p.children[i].args)
+		if template.token.children[i].args != e {
+			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, template.token.children[i].args)
 		}
 	}
 }
 
 func TestCompileSetTag(t *testing.T) {
-	p, _ := compile("{{=<% %>=}}<% erb_style_tags %><%={{ }}=%>{{test}}")
+	template, _ := Compile("{{=<% %>=}}<% erb_style_tags %><%={{ }}=%>{{test}}")
 	expected := []string{"erb_style_tags", "test"}
 
 	for i, e := range expected {
-		if p.children[i].args != e {
-			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p.children[i].args)
+		if template.token.children[i].args != e {
+			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, template.token.children[i].args)
 		}
 	}
 }
 
 func TestCompileComments(t *testing.T) {
-	p, _ := compile("{{  name  }}{{! blah}}{{gnome   }}{{ !# blah}}")
+	template, _ := Compile("{{  name  }}{{! blah}}{{gnome   }}{{ !# blah}}")
 	expected := []string{"name", "blah", "gnome", "#blah"}
 
 	for i, e := range expected {
-		if p.children[i].args != e {
-			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p.children[i].args)
+		if template.token.children[i].args != e {
+			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, template.token.children[i].args)
 		}
 	}
 }
 
 func TestCompilePartial(t *testing.T) {
-	p, _ := compile("{{name}}{{> test-assets/partial }}")
-	expected := []string{"name", ""}
+	template, _ := Compile("{{name}}{{> test-assets/partial }}")
+	expected := []string{"name", "foo"}
 
 	for i, e := range expected {
-		if p.children[i].args != e {
-			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p.children[i].args)
+		if template.token.children[i].args != e {
+			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, template.token.children[i].args)
 		}
-	}
-
-	if r := p.children[1].children[0].args; r != "foo" {
-		t.Errorf("Invalid arguments while parsing, expected foo but got %s", r)
 	}
 }
 
 func TestCompileSection(t *testing.T) {
-	p, _ := compile("hello, {{#name}}again, {{first_name}} {{last_name}}{{/name}}")
+	template, _ := Compile("hello, {{#name}}again, {{first_name}} {{last_name}}{{/name}}")
 	expected := []string{"hello, ", "name"}
 
 	for i, e := range expected {
-		if p.children[i].args != e {
-			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p.children[i].args)
+		if template.token.children[i].args != e {
+			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, template.token.children[i].args)
 		}
 	}
 
 	expected = []string{"again, ", "first_name", " ", "last_name"}
-	p2 := *p.children[1]
+	p2 := *template.token.children[1]
 	for i, e := range expected {
 		if p2.children[i].args != e {
 			t.Errorf("Invalid arguments while parsing, expected %s but got %s", e, p2.children[i].args)

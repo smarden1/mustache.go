@@ -81,15 +81,11 @@ func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 // Compile will take compile a template into a token.
 // The entire compiled template is held by a root token.
 // Sections are represented as children to current token.
-func compile(template string) (token, error) {
+func compile(template string, rootToken *token, buffer *bytes.Buffer, lineTokenPointers []*token) (*token, []*token, error) {
 	var err error
 	tripleTag, withinTag, notEscaped := false, false, false
 	otag, ctag := defaultOtag, defaultCtag
-	rootToken := token{}
-	rootToken.within = true
-	sections := []*token{&rootToken}
-	var buffer bytes.Buffer
-	lineTokenPointers := []*token{}
+	sections := []*token{rootToken}
 	cmd := ""
 
 	for i := 0; i < len(template); i++ {
@@ -110,7 +106,7 @@ func compile(template string) (token, error) {
 			// we just closed the tag, we should evaluate it
 			if !withinTag {
 				var currentToken token
-				currentToken, err = newToken(cmd, &buffer, true, notEscaped)
+				currentToken, err = newToken(cmd, buffer, true, notEscaped)
 				lineTokenPointers = append(lineTokenPointers, &currentToken)
 				notEscaped = false
 				cmd = ""
@@ -127,10 +123,7 @@ func compile(template string) (token, error) {
 					b, err := ioutil.ReadFile(currentToken.args + ".mustache")
 
 					if err == nil {
-						var tkn token
-						tkn, err = compile(string(b))
-						lastToken := sections[len(sections)-1]
-						lastToken.children = append(lastToken.children, &tkn)
+						_, lineTokenPointers, err = compile(string(b), sections[len(sections)-1], buffer, lineTokenPointers)
 					}
 				} else if currentToken.cmd == "=" {
 					otag, ctag = parseDelimiters(currentToken.args)
@@ -155,7 +148,7 @@ func compile(template string) (token, error) {
 				// just a section should not make a newline to the final output
 				// hwowever, a line with just whitespace or a single newline is valid
 				if isNewLine(s) {
-					if !shouldKeepWhiteSpace(lineTokenPointers, &buffer) {
+					if !shouldKeepWhiteSpace(lineTokenPointers, buffer) {
 						// clear out whitespace
 						for _, tkn := range lineTokenPointers {
 							if tkn.cmd == "" && !tkn.within {
@@ -171,7 +164,7 @@ func compile(template string) (token, error) {
 						buffer.WriteString(s)
 					}
 					lineTokenPointers = []*token{}
-					currentToken, _ := newToken("", &buffer, false, true)
+					currentToken, _ := newToken("", buffer, false, true)
 					lastToken := sections[len(sections)-1]
 					lastToken.children = append(lastToken.children, &currentToken)
 				} else {
@@ -181,7 +174,7 @@ func compile(template string) (token, error) {
 			// we just opened it so set state
 			if withinTag {
 				var currentToken token
-				currentToken, err = newToken(cmd, &buffer, false, false)
+				currentToken, err = newToken(cmd, buffer, false, false)
 				lineTokenPointers = append(lineTokenPointers, &currentToken)
 
 				if !currentToken.isEmpty() {
@@ -192,7 +185,7 @@ func compile(template string) (token, error) {
 		}
 	}
 
-	if !shouldKeepWhiteSpace(lineTokenPointers, &buffer) {
+	if !shouldKeepWhiteSpace(lineTokenPointers, buffer) {
 		// clear out whitespace
 		for _, tkn := range lineTokenPointers {
 			if tkn.cmd == "" && !tkn.within {
@@ -203,7 +196,7 @@ func compile(template string) (token, error) {
 		buffer.Reset()
 	}
 	var currentToken token
-	currentToken, err = newToken(cmd, &buffer, false, false)
+	currentToken, err = newToken(cmd, buffer, false, false)
 	if !currentToken.isEmpty() {
 		lastToken := sections[len(sections)-1]
 		lastToken.children = append(lastToken.children, &currentToken)
@@ -212,7 +205,7 @@ func compile(template string) (token, error) {
 	if len(sections) > 1 {
 		err = fmt.Errorf("Malformed template: %s was not closed", sections[len(sections)-1].args)
 	}
-	return rootToken, err
+	return rootToken, lineTokenPointers, err
 }
 
 // Commands are the valid commands in mustache.
@@ -369,9 +362,10 @@ type Template struct {
 // Compile will compile a template. Compiled templates are faster if you use them more then once,
 // otherwise prefer Render.
 func Compile(template string) (*Template, error) {
-	t, err := compile(template)
+	var b bytes.Buffer
+	t, _, err := compile(template, &token{within: true}, &b, []*token{})
 
-	return &Template{&t}, err
+	return &Template{t}, err
 }
 
 // Render will render a template using the provided data.

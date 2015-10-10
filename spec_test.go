@@ -28,7 +28,7 @@ func TestSpec(t *testing.T) {
 
 	for _, file := range files {
 		fileName := file.Name()
-		if strings.HasSuffix(fileName, ".json") && !strings.HasPrefix(fileName, "~") {
+		if strings.HasSuffix(fileName, ".json") && !strings.HasPrefix(fileName, "~") && fileName == "partials.json" {
 			RunSpecFile(t, fileName)
 		}
 	}
@@ -42,8 +42,10 @@ func RunSpecFile(t *testing.T, fileName string) {
 
 	for _, test := range tests.Tests {
 		// go uses different quoting character then the mustache spec, so we skip this test
+
 		if test.Name != "HTML Escaping" && test.Name != "Recursion" {
 			files := makePartials(&test, fileName, test.Name)
+
 			if output, _ := Render(test.Template, test.Data); output != test.Expected {
 				t.Errorf("%s:%s, recieved %q and expected %q", fileName, test.Name, output, test.Expected)
 			}
