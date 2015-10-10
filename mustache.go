@@ -12,6 +12,18 @@ import (
 var defaultOtag = "{{"
 var defaultCtag = "}}"
 
+// Commands are the valid commands in mustache.
+var commands = map[string]bool{
+	"#": true,
+	"^": true,
+	"/": true,
+	"<": true,
+	">": true,
+	"=": true,
+	"!": true,
+	"&": true,
+}
+
 // Token represents a command or bit of text in the template represented as a tree strucutre.
 type token struct {
 	cmd        string
@@ -83,10 +95,10 @@ func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 // Sections are represented as children to current token.
 func compile(template string, rootToken *token, buffer *bytes.Buffer, lineTokenPointers []*token) (*token, []*token, error) {
 	var err error
-	tripleTag, withinTag, notEscaped := false, false, false
-	otag, ctag := defaultOtag, defaultCtag
-	sections := []*token{rootToken}
-	cmd := ""
+	tripleTag, withinTag, notEscaped := false, false, false // booleans that indicate state
+	otag, ctag := defaultOtag, defaultCtag                  // opening and closing tags
+	sections := []*token{rootToken}                         // section stack
+	cmd := ""                                               // current command for this token
 
 	for i := 0; i < len(template); i++ {
 		s := string(template[i])
@@ -114,8 +126,7 @@ func compile(template string, rootToken *token, buffer *bytes.Buffer, lineTokenP
 				if currentToken.cmd == "/" {
 					if len(sections) > 0 && sections[len(sections)-1].args == currentToken.args {
 						sections = sections[:len(sections)-1]
-						lastToken := sections[len(sections)-1]
-						lastToken.children = append(lastToken.children, &currentToken)
+						lineTokenPointers = addTokenToLastToken(&currentToken, lineTokenPointers, sections)
 					} else {
 						err = fmt.Errorf("Malformed template: %s was closed but not opened", currentToken.args)
 					}
@@ -149,12 +160,7 @@ func compile(template string, rootToken *token, buffer *bytes.Buffer, lineTokenP
 				// hwowever, a line with just whitespace or a single newline is valid
 				if isNewLine(s) {
 					if !shouldKeepWhiteSpace(lineTokenPointers, buffer) {
-						// clear out whitespace
-						for _, tkn := range lineTokenPointers {
-							if tkn.cmd == "" && !tkn.within {
-								tkn.args = ""
-							}
-						}
+						cleanWhiteSpaceOnPastTokens(lineTokenPointers)
 						// handle windows carriage returns
 						if matchesTag(template, i, "\r\n") {
 							i++
@@ -165,8 +171,7 @@ func compile(template string, rootToken *token, buffer *bytes.Buffer, lineTokenP
 					}
 					lineTokenPointers = []*token{}
 					currentToken, _ := newToken("", buffer, false, true)
-					lastToken := sections[len(sections)-1]
-					lastToken.children = append(lastToken.children, &currentToken)
+					addTokenToLastToken(&currentToken, lineTokenPointers, sections)
 				} else {
 					buffer.WriteString(s)
 				}
@@ -175,32 +180,18 @@ func compile(template string, rootToken *token, buffer *bytes.Buffer, lineTokenP
 			if withinTag {
 				var currentToken token
 				currentToken, err = newToken(cmd, buffer, false, false)
-				lineTokenPointers = append(lineTokenPointers, &currentToken)
-
-				if !currentToken.isEmpty() {
-					lastToken := sections[len(sections)-1]
-					lastToken.addChild(&currentToken)
-				}
+				lineTokenPointers = addTokenToLastToken(&currentToken, lineTokenPointers, sections)
 			}
 		}
 	}
 
 	if !shouldKeepWhiteSpace(lineTokenPointers, buffer) {
-		// clear out whitespace
-		for _, tkn := range lineTokenPointers {
-			if tkn.cmd == "" && !tkn.within {
-				tkn.args = ""
-			}
-		}
-
+		cleanWhiteSpaceOnPastTokens(lineTokenPointers)
 		buffer.Reset()
 	}
 	var currentToken token
 	currentToken, err = newToken(cmd, buffer, false, false)
-	if !currentToken.isEmpty() {
-		lastToken := sections[len(sections)-1]
-		lastToken.children = append(lastToken.children, &currentToken)
-	}
+	addTokenToLastToken(&currentToken, lineTokenPointers, sections)
 
 	if len(sections) > 1 {
 		err = fmt.Errorf("Malformed template: %s was not closed", sections[len(sections)-1].args)
@@ -208,16 +199,22 @@ func compile(template string, rootToken *token, buffer *bytes.Buffer, lineTokenP
 	return rootToken, lineTokenPointers, err
 }
 
-// Commands are the valid commands in mustache.
-var commands = map[string]bool{
-	"#": true,
-	"^": true,
-	"/": true,
-	"<": true,
-	">": true,
-	"=": true,
-	"!": true,
-	"&": true,
+func addTokenToLastToken(tkn *token, lineTokenPointers []*token, sections []*token) []*token {
+	if !tkn.isEmpty() {
+		lastToken := sections[len(sections)-1]
+		lastToken.addChild(tkn)
+	}
+
+	return append(lineTokenPointers, tkn)
+}
+
+func cleanWhiteSpaceOnPastTokens(lineTokenPointers []*token) {
+	// clear out whitespace
+	for _, tkn := range lineTokenPointers {
+		if tkn.cmd == "" && !tkn.within {
+			tkn.args = ""
+		}
+	}
 }
 
 // ShouldKeepWhiteSpace returns a boolean which indicates whether or not the
@@ -266,8 +263,9 @@ func matchesTag(template string, i int, tag string) bool {
 	return len(template)-i >= l && template[i:i+l] == tag
 }
 
+// ParseDelimiters parses a delimiter command and returns the opening and closing tags
 func parseDelimiters(args string) (string, string) {
-	splitArgs := make([]string, 0)
+	var splitArgs []string
 	for _, e := range strings.Split(args, " ") {
 		e = strings.Replace(e, "=", "", -1)
 		if !isStringCompletelyWhiteSpace(e) {
@@ -301,6 +299,7 @@ func newToken(cmd string, b *bytes.Buffer, within, notEscaped bool) (token, erro
 	return t, err
 }
 
+// IsFalsey returns a boolean indicating whether the value is "falsey"
 func isFalsey(val interface{}) bool {
 	v := reflect.ValueOf(val)
 	switch reflect.TypeOf(val).Kind() {
@@ -311,7 +310,6 @@ func isFalsey(val interface{}) bool {
 	default:
 		return fmt.Sprint(val) == ""
 	}
-
 }
 
 // ContextStackContains recursively walks the context stack to see if the given key is available.
@@ -336,6 +334,7 @@ func contextStackContains(cstack []interface{}, key string) (interface{}, bool) 
 			}
 		}
 	}
+	// a solitary "." is the implicit operator
 	if strings.Contains(key, ".") {
 		s := strings.Split(key, ".")
 		searchstack := cstack

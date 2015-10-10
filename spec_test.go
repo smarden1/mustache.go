@@ -28,7 +28,7 @@ func TestSpec(t *testing.T) {
 
 	for _, file := range files {
 		fileName := file.Name()
-		if strings.HasSuffix(fileName, ".json") && !strings.HasPrefix(fileName, "~") && fileName == "partials.json" {
+		if strings.HasSuffix(fileName, ".json") && !strings.HasPrefix(fileName, "~") {
 			RunSpecFile(t, fileName)
 		}
 	}
