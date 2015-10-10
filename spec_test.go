@@ -43,7 +43,7 @@ func RunSpecFile(t *testing.T, fileName string) {
 	for _, test := range tests.Tests {
 		// go uses different quoting character then the mustache spec, so we skip this test
 		if test.Name != "HTML Escaping" && test.Name != "Recursion" {
-			files := makePartials(&test, strings.Replace(fileName, ".json", "", 1))
+			files := makePartials(&test, fileName, test.Name)
 			if output, _ := Render(test.Template, test.Data); output != test.Expected {
 				t.Errorf("%s:%s, recieved %q and expected %q", fileName, test.Name, output, test.Expected)
 			}
@@ -56,17 +56,18 @@ func RunSpecFile(t *testing.T, fileName string) {
 
 // MakePartials writes the partials to a directory and returns an array of the paths.
 // Arguments are the spec and and the index of the test, just to distinguish
-func makePartials(test *Spec, testSuite string) []string {
+func makePartials(test *Spec, fileName string, testName string) []string {
 	if len(test.Partials) == 0 {
 		return []string{}
 	}
 
 	dir, _ := os.Getwd()
 	var files []string
+	testSuite := strings.Replace(fileName, ".json", "", 1)
 
 	partials := make(map[string]string, len(test.Partials))
 	for name, content := range test.Partials {
-		dirName := fmt.Sprintf("%s/spec/partials/%s", dir, testSuite)
+		dirName := fmt.Sprintf("%s/spec/partials/%s/%s", dir, testSuite, strings.Replace(testName, " ", "_", -1))
 		fileName := fmt.Sprintf("%s.mustache", name)
 
 		os.MkdirAll(dirName, 0777)
