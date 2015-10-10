@@ -280,3 +280,22 @@ func TestMatchesTag(t *testing.T) {
 		}
 	}
 }
+
+func TestParseDelimiters(t *testing.T) {
+	type expects struct {
+		args string
+		otag string
+		ctag string
+	}
+
+	e := [...]expects{
+		expects{" | | ", "|", "|"},
+		expects{"=<% %>=", "<%", "%>"},
+	}
+
+	for _, ex := range e {
+		if otag, ctag := parseDelimiters(ex.args); otag != ex.otag || ctag != ex.ctag {
+			t.Errorf("Unable to find the correct delimiters. expected %s and %s but received %s and %s", ex.otag, ex.ctag, otag, ctag)
+		}
+	}
+}

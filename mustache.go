@@ -133,10 +133,7 @@ func compile(template string) (token, error) {
 						lastToken.children = append(lastToken.children, &tkn)
 					}
 				} else if currentToken.cmd == "=" {
-					sets := strings.SplitN(currentToken.args, " ", 2)
-					otag = strings.Replace(sets[0], " ", "", -1)
-					ctag = strings.Replace(sets[len(sets)-1], " ", "", -1)
-					ctag = strings.Replace(ctag, "=", "", -1) // this has a bug if it has ='s in the ctag
+					otag, ctag = parseDelimiters(currentToken.args)
 				} else {
 					lastToken := sections[len(sections)-1]
 					lastToken.children = append(lastToken.children, &currentToken)
@@ -274,6 +271,18 @@ func matchesTag(template string, i int, tag string) bool {
 	l := len(tag)
 
 	return len(template)-i >= l && template[i:i+l] == tag
+}
+
+func parseDelimiters(args string) (string, string) {
+	splitArgs := make([]string, 0)
+	for _, e := range strings.Split(args, " ") {
+		e = strings.Replace(e, "=", "", -1)
+		if !isStringCompletelyWhiteSpace(e) {
+			splitArgs = append(splitArgs, e)
+		}
+	}
+
+	return splitArgs[0], splitArgs[len(splitArgs)-1]
 }
 
 // NewToken is a constructor for token and will return a new token based on several parameters.
