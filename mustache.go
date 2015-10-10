@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// default opening and closing tags
 var defaultOtag = "{{"
 var defaultCtag = "}}"
 
@@ -24,13 +25,15 @@ var commands = map[string]bool{
 	"&": true,
 }
 
-// Token represents a command or bit of text in the template represented as a tree strucutre.
+// Token represents a command or bit of text in the template represented as a tree structure.
+// tokens can be within or not, which indicate whether they are a mustache command or if
+// they are just text to be rendered.
 type token struct {
-	cmd        string
-	args       string
-	within     bool
-	notEscaped bool
-	children   []*token
+	cmd        string   // the command for the current token. interpolation and simple text will have an empty command
+	args       string   // the args for the given command. can contain the variable to be interpolated or simple text to be displayed
+	within     bool     // boolean indicating whether this token represent commands within tags or outside of them
+	notEscaped bool     // boolean indicating whether the text should be html escaped or not
+	children   []*token // children tokens are attached for sections. children tokens will only be rendered if their parent is
 }
 
 // AddChild adds a child token to the current token
@@ -44,6 +47,19 @@ func (t *token) isEmpty() bool {
 }
 
 // Render recursively walks the tokens and writes it's output to a buffer.
+// The cstack represents the context stack and contains the valid context for
+// a token. This context is the data that is provided for rendering a template.
+// However the context stack gets scoped as we walk through the token tree.
+// If the given variable is not found in the current state of the context,
+// then the stack is searched until a match is found
+//
+//  For example,
+//
+//    given {a: foo, d: hidden, b: {c: bar, d: biz}}
+//      a template of {{#b}}{{c}}{{/b}} will return bar
+//      a template of {{#b}}{{a}}{{/b}} will return foo
+//      a template of {{#b}}{{d}}{{/b}} will return biz
+//      a template of {{d}} will return hidden
 func (t *token) render(cstack []interface{}, output *bytes.Buffer) {
 	if t.within {
 		if t.cmd == "#" {
@@ -228,8 +244,7 @@ func shouldKeepWhiteSpace(lineTokenPointers []*token, buffer *bytes.Buffer) bool
 	}
 
 	for _, tkn := range lineTokenPointers {
-		t := *tkn
-		if t.cmd == "" && !isStringCompletelyWhiteSpace(t.args) {
+		if tkn.cmd == "" && !isStringCompletelyWhiteSpace(tkn.args) {
 			return true
 		}
 	}
@@ -256,7 +271,7 @@ func isNewLine(chr string) bool {
 	return chr == "\n" || chr == "\r"
 }
 
-// MatchesTag looks ahead to see if the given tag is found in the template.
+// MatchesTag looks ahead to see if the given tag is found at the given position in a template.
 func matchesTag(template string, i int, tag string) bool {
 	l := len(tag)
 
