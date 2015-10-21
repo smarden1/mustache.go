@@ -23,6 +23,7 @@ type SpecFile struct {
 	Tests    []Spec `json:"tests"`
 }
 
+// specs to be ignore in the following format "fileNameWithoutSuffix-TestName"
 var ignoreSpecList = map[string]bool{
 	"interpolation-HTML Escaping":               true, // go uses different quoting character then the mustache spec
 	"partials-Recursion":                        true, // not implemented
@@ -31,6 +32,7 @@ var ignoreSpecList = map[string]bool{
 	"partials-Standalone Indentation":           true, // edge cases with adding additional space
 }
 
+// TestSpec runs all of the mustache spec files except for the ones in the ignoreSpecList
 func TestSpec(t *testing.T) {
 	files, _ := ioutil.ReadDir("spec/specs/")
 
